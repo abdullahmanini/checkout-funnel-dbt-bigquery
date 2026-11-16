@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout Funnel Readout</title>
+<meta name="description" content="A dbt and BigQuery pipeline over the public thelook store, a checkout funnel diagnosis and a simulated guest checkout A/B test.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%23c1fbd4'/%3E%3Cpath d='M8 22h4v-6H8zm6 0h4V10h-4zm6 0h4v-9h-4z' fill='%23000'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #000000;
+  --canvas: #fbfbf5;
+  --surface: #ffffff;
+  --aloe: #c1fbd4;
+  --pistachio: #d4f9e0;
+  --shade-30: #d4d4d8;
+  --shade-40: #a1a1aa;
+  --shade-50: #71717a;
+  --shade-60: #52525b;
+  --hairline: #e4e4e7;
+  --up: #1f8f4e;
+  --down: #c2410c;
+  --shadow: 0 8px 8px rgba(0,0,0,.04), 0 4px 4px rgba(0,0,0,.04), 0 2px 2px rgba(0,0,0,.04), 0 0 0 1px rgba(0,0,0,.08);
+  --display: "Inter", Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "Inter", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 420;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+/* nav */
+nav { position: sticky; top: 0; z-index: 10; background: rgba(251,251,245,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--hairline); }
+nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+.wordmark { font-weight: 550; letter-spacing: .2px; text-decoration: none; }
+.navlinks { display: flex; align-items: center; gap: 24px; font-size: 15px; }
+.navlinks a:not(.pill) { text-decoration: none; color: var(--shade-60); }
+.navlinks a:not(.pill):hover { color: var(--ink); }
+
+/* buttons and tags */
+.pill { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 22px; border-radius: 9999px; font-size: 15px; font-weight: 500; text-decoration: none; border: 1px solid var(--ink); transition: background .15s ease; }
+.pill-dark { background: var(--ink); color: #fff; }
+.pill-dark:hover { background: #3f3f46; }
+.pill-outline { background: var(--surface); color: var(--ink); }
+.pill-outline:hover { background: var(--pistachio); }
+.tag { display: inline-block; padding: 4px 12px; border-radius: 9999px; background: var(--aloe); font-size: 12px; letter-spacing: .72px; text-transform: uppercase; }
+
+/* hero */
+header.hero { padding: 88px 0 56px; }
+.hero h1 { font-family: var(--display); font-weight: 300; font-size: clamp(38px, 6.2vw, 70px); line-height: 1.04; letter-spacing: -.5px; margin: 20px 0 20px; max-width: 15ch; font-variation-settings: "opsz" 32; }
+.hero p.lead { font-size: 19px; line-height: 1.55; color: var(--shade-60); max-width: 62ch; margin: 0 0 32px; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* kpis */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 56px; }
+.card { background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); padding: 24px; }
+.kpi .label { font-size: 13px; color: var(--shade-50); }
+.kpi .value { font-family: var(--display); font-weight: 300; font-size: 40px; line-height: 1.1; margin: 8px 0 6px; font-variation-settings: "opsz" 32; font-variant-numeric: tabular-nums; }
+.kpi .note { font-size: 13px; color: var(--shade-60); }
+.kpi.featured { background: var(--aloe); box-shadow: none; }
+.kpi.featured .label, .band .eyebrow { color: var(--shade-60); }
+
+/* sections */
+section { padding: 72px 0; border-top: 1px solid var(--hairline); }
+.eyebrow { font-size: 12px; letter-spacing: .72px; text-transform: uppercase; color: var(--shade-50); margin: 0 0 12px; }
+h2 { font-family: var(--display); font-weight: 300; font-size: clamp(30px, 4vw, 48px); line-height: 1.14; margin: 0 0 16px; max-width: 22ch; font-variation-settings: "opsz" 32; }
+h3 { font-size: 20px; font-weight: 550; margin: 0 0 12px; }
+.prose { max-width: 68ch; color: #27272a; }
+.prose p { margin: 0 0 16px; }
+.grid-2 { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; margin-top: 32px; align-items: start; }
+.grid-2 > *, .band > *, .kpis > *, .lineage > * { min-width: 0; }
+.muted { color: var(--shade-50); font-size: 14px; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: #f1f1ea; padding: 1px 6px; border-radius: 4px; }
+
+/* recommendation band */
+.band { background: var(--pistachio); border-radius: 12px; padding: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.band h2 { margin-bottom: 0; }
+.band ol { margin: 0; padding-left: 20px; }
+.band li { margin-bottom: 12px; }
+
+/* tables */
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+th { font-weight: 500; color: var(--shade-50); font-size: 13px; }
+td.num, th.num { text-align: right; }
+tr:last-child td { border-bottom: 0; }
+.sig { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 12px; background: var(--aloe); }
+.ns { background: var(--shade-30); }
+
+/* funnel bars */
+.funnel-row { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: center; margin-bottom: 14px; }
+.funnel-row .name { font-size: 14px; color: var(--shade-60); }
+.bars { display: grid; gap: 4px; }
+.bar { height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 12px; color: #fff; min-width: 2px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.bar.signed { background: var(--ink); }
+.bar.anon { background: var(--shade-40); color: var(--ink); }
+.bar.zero { background: transparent; color: var(--ink); justify-content: flex-start; padding-left: 4px; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--shade-60); margin-bottom: 16px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+svg text { font-family: "Inter", Helvetica, Arial, sans-serif; }
+
+/* monthly */
+.months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; align-items: end; height: 180px; margin-top: 8px; }
+.month { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.month .col { width: 100%; background: var(--ink); border-radius: 4px 4px 0 0; }
+.month span { font-size: 11px; color: var(--shade-50); margin-top: 6px; }
+
+/* lineage */
+.lineage { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 32px; }
+.layer h3 { font-size: 13px; letter-spacing: .72px; text-transform: uppercase; color: var(--shade-50); font-weight: 500; }
+.node { background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.node small { display: block; font-family: "Inter", sans-serif; color: var(--shade-50); font-size: 12px; margin-top: 2px; }
+.layer.marts .node { background: var(--aloe); border-color: transparent; }
+.checks { padding-left: 20px; margin: 0; }
+.checks li { margin-bottom: 8px; }
+
+footer { border-top: 1px solid var(--hairline); padding: 48px 0 64px; font-size: 14px; color: var(--shade-60); }
+footer .wrap { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+footer a { margin-right: 16px; }
+
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid-2, .band { grid-template-columns: 1fr; }
+  .lineage { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  .navlinks a:not(.pill) { display: none; }
+  header.hero { padding: 56px 0 40px; }
+  .kpis, .lineage { grid-template-columns: 1fr; }
+  .band { padding: 24px; }
+  .funnel-row { grid-template-columns: 1fr; gap: 6px; }
+  .month span { font-size: 9px; }
+  section { padding: 56px 0; }
+}
+@media (prefers-reduced-motion: reduce) { .bar { transition: none; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<nav aria-label="Main">
+  <div class="wrap">
+    <a class="wordmark" href="#top">Checkout funnel readout</a>
+    <div class="navlinks">
+      <a href="#funnel">Funnel</a>
+      <a href="#test">Test</a>
+      <a href="#pipeline">Pipeline</a>
+      <a class="pill pill-dark" href="https://github.com/abdullahmanini/checkout-funnel-dbt-bigquery">View code</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <span class="tag">BigQuery · dbt · Python</span>
+    <h1>Anonymous shoppers filled 31,701 carts in a year and bought nothing.</h1>
+    <p class="lead">I modeled 2.3 million clickstream events from Google's public thelook store in dbt on BigQuery, found where the checkout funnel leaks, and ran a simulated A/B test of letting those shoppers pay as guests.</p>
+    <div class="ctas">
+      <a class="pill pill-dark" href="#decision">Read the recommendation</a>
+      <a class="pill pill-outline" href="https://github.com/abdullahmanini/checkout-funnel-dbt-bigquery">Open the repo</a>
+    </div>
+
+    <div class="kpis">
+      <div class="card kpi">
+        <div class="label">Events modeled</div>
+        <div class="value">2.3M</div>
+        <div class="note">Nine dbt models, staging to marts</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">dbt data tests passing</div>
+        <div class="value">37 / 37</div>
+        <div class="note">Keys, values, relationships, four custom</div>
+      </div>
+      <div class="card kpi featured">
+        <div class="label">Conversion lift, guest checkout</div>
+        <div class="value">+3.53 pp</div>
+        <div class="note">95% CI +2.06 to +5.00 pp. True effect +3.28 pp</div>
+      </div>
+      <div class="card kpi">
+        <div class="label">Projected annual GMV</div>
+        <div class="value">+$181k</div>
+        <div class="note">95% CI −$25k to +$388k on $3.27M</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="decision">
+  <div class="wrap">
+    <div class="band">
+      <div>
+        <p class="eyebrow">Recommendation</p>
+        <h2>Ship guest checkout with a 10% holdout.</h2>
+      </div>
+      <ol>
+        <li>Conversion rose 3.53 points, from 45.25% to 48.78%, with p &lt; 0.001. The estimate lands within 0.25 points of the effect built into the simulation.</li>
+        <li>Revenue per visitor rose 5.5% but the interval still crosses zero (p = 0.085). Eight weeks could detect about 9%, so keep a holdout and read it again next quarter.</li>
+        <li>Add an account prompt after a guest order. Guest buyers can't be linked to a later order, which drags the measured repeat rate down.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="funnel">
+  <div class="wrap">
+    <p class="eyebrow">01 · Funnel</p>
+    <h2>Every purchase came from a signed-in session.</h2>
+    <div class="prose">
+      <p>From November 2025 to October 2026 the store had 128,700 sessions. Cart to purchase lost 32,015 of them, more than any other step, and 31,701 of those were anonymous carts. Browser and traffic source barely matter: conversion ranges from 49.8% to 50.8% across browsers. The data has no device field, so a mobile split isn't possible here.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Sessions by furthest step</h3>
+        <div class="legend"><span><i style="background:var(--ink)"></i>Signed in</span><span><i style="background:var(--shade-40)"></i>Anonymous</span></div>
+        <div id="funnel-bars" role="img" aria-label="Sessions reaching each funnel step, signed in versus anonymous"></div>
+        <p class="muted">Median time from first product view to cart is 124 seconds; payment follows a median 5 minutes later.</p>
+      </div>
+      <div class="card">
+        <h3>Range across segments</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Segment</th><th class="num">Groups</th><th class="num">Cart rate</th><th class="num">Conversion</th></tr></thead>
+            <tbody id="segments"></tbody>
+          </table>
+        </div>
+        <h3 style="margin-top:28px">Step drop-off</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Step</th><th class="num">In</th><th class="num">Lost</th><th class="num">Drop-off</th></tr></thead>
+            <tbody id="steps"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="test">
+  <div class="wrap">
+    <p class="eyebrow">02 · Simulated A/B test</p>
+    <h2>Guest checkout lifts conversion; revenue needs a longer read.</h2>
+    <div class="prose">
+      <p>Visitors from August 3 to September 27, 2026 were split 50/50 with a salted <code>FARM_FINGERPRINT</code> hash: 8,794 control and 8,789 treatment (sample ratio check p = 0.97). In treatment, 12% of anonymous carts became guest orders at list price minus a 10% welcome code, which produced 278 orders. Everything else is the store's own data, and the true effect is known because the mart computes the counterfactual for both arms.</p>
+    </div>
+    <div class="card" style="margin-top:32px">
+      <h3>Treatment vs control, % change with 95% CI</h3>
+      <svg id="forest" width="100%" viewBox="0 0 900 250" role="img" aria-label="Relative change and confidence interval for four metrics"></svg>
+      <p class="muted">Dot is the estimate, the bar is the 95% interval and the tick is the true simulated effect. Green bars exclude zero.</p>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Metric</th><th class="num">Control</th><th class="num">Treatment</th><th class="num">Difference</th><th class="num">95% CI</th><th class="num">p</th><th></th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="prose">
+        <h3>Why Welch decides revenue</h3>
+        <p>Mann-Whitney U on revenue per visitor gives p &lt; 0.001 and Welch's t-test gives 0.085. Most visitors spend $0, so Mann-Whitney mostly detects the conversion change. Welch answers whether dollars per visitor moved.</p>
+      </div>
+      <div class="prose">
+        <h3>By traffic source</h3>
+        <p>The lift is positive in all five sources. After Holm correction only AdWords and Email clear 0.05, and they are the two largest groups, so this looks like sample size rather than a reason to target by channel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="kpis">
+  <div class="wrap">
+    <p class="eyebrow">03 · Store KPIs</p>
+    <h2>Monthly GMV more than doubled over the year.</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Net GMV by month</h3>
+        <div class="months" id="months" role="img" aria-label="Net GMV by month, November 2025 to October 2026"></div>
+        <p class="muted" id="months-note"></p>
+      </div>
+      <div class="card">
+        <h3>Top brands by GMV, trailing 12 months</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Brand</th><th class="num">GMV</th><th class="num">Orders</th><th class="num">AOV</th><th class="num">Returns</th></tr></thead>
+            <tbody id="brands"></tbody>
+          </table>
+        </div>
+        <p class="muted">Each brand stands in for a merchant. Brand-level 30-day repeat is near zero (12 of 2,614 brands above 0%), so the store-level cohort rate is the one to watch.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pipeline">
+  <div class="wrap">
+    <p class="eyebrow">04 · Pipeline</p>
+    <h2>Nine dbt models and 37 tests on BigQuery.</h2>
+    <div class="lineage">
+      <div class="layer">
+        <h3>Source</h3>
+        <div class="node">events<small>2,426,472 rows</small></div>
+        <div class="node">order_items<small>181,396 rows</small></div>
+        <div class="node">products<small>29,120 rows</small></div>
+      </div>
+      <div class="layer">
+        <h3>Staging · views</h3>
+        <div class="node">stg_events<small>drops future-dated rows, parses product ids</small></div>
+        <div class="node">stg_order_items<small>status flags, prices to 2 dp</small></div>
+        <div class="node">stg_products</div>
+      </div>
+      <div class="layer">
+        <h3>Intermediate</h3>
+        <div class="node">int_session_steps<small>LAG / LEAD / ROW_NUMBER per session</small></div>
+        <div class="node">int_session_orders<small>matches sessions to order lines</small></div>
+      </div>
+      <div class="layer marts">
+        <h3>Marts</h3>
+        <div class="node">fct_checkout_funnel</div>
+        <div class="node">mart_experiment_visitors</div>
+        <div class="node">mart_monthly_kpis</div>
+        <div class="node">mart_merchant_performance</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="prose">
+        <h3>Custom tests</h3>
+        <ul class="checks">
+          <li>A purchase never comes before its cart add</li>
+          <li>Every purchase session has an order line</li>
+          <li>Guest orders never appear in control</li>
+          <li>Session-to-order matches over 10 minutes apart (warn)</li>
+        </ul>
+      </div>
+      <div class="prose">
+        <h3>Things the data needed</h3>
+        <p>thelook has no session id on orders, so each purchase session is matched to the same user's order line for a product viewed in that session, nearest in time. The public table also holds events dated in the future (1,377 on November 16, 2026), so staging cuts at a fixed <code>as_of</code> date.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap">
+    <p class="eyebrow">05 · Limits</p>
+    <h2>What is real and what is simulated.</h2>
+    <div class="prose">
+      <p>thelook_ecommerce is a synthetic store Google publishes for practice, so its patterns are cleaner than real shoppers: anonymous sessions never buy and segments hardly differ. The funnel, GMV and brand numbers are what that dataset contains.</p>
+      <p>The guest orders in the test are invented by a fixed rule, and the 12% recovery rate and 10% discount are assumptions. The test shows the method recovering a known answer. It says nothing about how a real guest checkout would perform.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>Abdullah Al Mneni · Business Technology Management, Toronto Metropolitan University</div>
+    <div>
+      <a href="https://github.com/abdullahmanini/checkout-funnel-dbt-bigquery">GitHub</a>
+      <a href="https://www.linkedin.com/in/abdullah-al-mneni-554809309/">LinkedIn</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const pct = (x, d = 2) => (x * 100).toFixed(d) + "%";
+const pp = x => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(2) + " pp";
+const signedPct = x => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1) + "%";
+const usd = x => "$" + x.toFixed(2);
+const k = x => "$" + Math.round(x / 1000).toLocaleString("en-US") + "k";
+const fmt = n => n.toLocaleString("en-US");
+const pval = p => p < 0.001 ? "< 0.001" : p.toFixed(3);
+
+function render(r) {
+  const f = r.funnel, e = r.experiment;
+
+  // funnel bars, scaled to the larger group
+  const max = Math.max(f.signed_in.sessions, f.anonymous.sessions);
+  const rows = [
+    ["Viewed a product", f.signed_in.sessions, f.anonymous.sessions],
+    ["Added to cart", f.signed_in.cart, f.anonymous.cart],
+    ["Purchased", f.signed_in.purchase, f.anonymous.purchase],
+  ];
+  document.getElementById("funnel-bars").innerHTML = rows.map(([name, s, a]) => `
+    <div class="funnel-row"><div class="name">${name}</div><div class="bars">
+      <div class="bar signed" data-w="${s / max * 100}" style="width:0">${fmt(s)}</div>
+      <div class="bar anon ${a === 0 ? "zero" : ""}" data-w="${a === 0 ? 100 : a / max * 100}" style="width:0">${fmt(a)}</div>
+    </div></div>`).join("");
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.querySelectorAll(".bar").forEach(b => b.style.width = b.dataset.w + "%")));
+
+  const segNames = { browser: "Browser", traffic_source: "Traffic source", category: "Product category" };
+  document.getElementById("segments").innerHTML = ["browser", "traffic_source", "category"].map(key => {
+    const s = f.segments[key];
+    return `<tr><td>${segNames[key]}</td><td class="num">${s.segments}</td>
+      <td class="num">${pct(s.cart_rate_range[0], 1)} to ${pct(s.cart_rate_range[1], 1)}</td>
+      <td class="num">${pct(s.conversion_range[0], 1)} to ${pct(s.conversion_range[1], 1)}</td></tr>`;
+  }).join("");
+  document.getElementById("steps").innerHTML = f.steps.map(s =>
+    `<tr><td>${s.step}</td><td class="num">${fmt(s.from)}</td><td class="num">${fmt(s.lost)}</td><td class="num">${pct(s.drop_off, 1)}</td></tr>`).join("");
+
+  // results table: rates show point differences, money shows % change
+  const metrics = [
+    ["Conversion", e.conversion, pct, true],
+    ["Revenue per visitor", e.revenue_per_visitor, usd, false],
+    ["Average order value", e.aov, usd, false],
+    ["30-day repeat rate", e.repeat_30d, pct, true],
+  ];
+  document.getElementById("results").innerHTML = metrics.map(([name, m, v, isRate]) => {
+    const diff = isRate ? pp(m.diff) : signedPct(m.rel);
+    const ci = isRate ? m.ci.map(pp).join(" to ") : m.rel_ci.map(signedPct).join(" to ");
+    const sig = m.p < 0.05 ? '<span class="sig">significant</span>' : '<span class="sig ns">not significant</span>';
+    return `<tr><td>${name}</td><td class="num">${v(m.control)}</td><td class="num">${v(m.treatment)}</td>
+      <td class="num">${diff}</td><td class="num">${ci}</td><td class="num">${pval(m.p)}</td><td>${sig}</td></tr>`;
+  }).join("");
+
+  // forest plot
+  const truth = [e.conversion_true_diff / e.conversion.control, r.gmv_impact.true_rel, null, null];
+  const items = [e.conversion, e.revenue_per_visitor, e.aov, e.repeat_30d];
+  const names = ["Conversion", "Revenue per visitor", "Average order value", "30-day repeat rate"];
+  const lo = -25, hi = 15, x0 = 200, x1 = 880;
+  const X = v => x0 + (v * 100 - lo) / (hi - lo) * (x1 - x0);
+  let svg = "";
+  for (let t = lo; t <= hi; t += 5) {
+    svg += `<line x1="${X(t / 100)}" x2="${X(t / 100)}" y1="10" y2="210" stroke="${t === 0 ? "#000" : "#e4e4e7"}" stroke-width="1"/>
+      <text x="${X(t / 100)}" y="232" text-anchor="middle" font-size="12" fill="#71717a">${t > 0 ? "+" : t < 0 ? "−" : ""}${Math.abs(t)}%</text>`;
+  }
+  items.forEach((m, i) => {
+    const y = 35 + i * 50;
+    const color = m.rel_ci[0] > 0 ? "var(--up)" : m.rel_ci[1] < 0 ? "var(--down)" : "#a1a1aa";
+    svg += `<text x="0" y="${y + 5}" font-size="14" fill="#000">${names[i]}</text>
+      <line x1="${X(m.rel_ci[0])}" x2="${X(m.rel_ci[1])}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="${X(m.rel)}" cy="${y}" r="6" fill="#000"/>
+      <text x="${X(m.rel_ci[1]) + 10}" y="${y + 4}" font-size="12" fill="#52525b">${signedPct(m.rel)}</text>`;
+    if (truth[i] !== null) svg += `<line x1="${X(truth[i])}" x2="${X(truth[i])}" y1="${y - 12}" y2="${y + 12}" stroke="#000" stroke-width="2"/>`;
+  });
+  document.getElementById("forest").innerHTML = svg;
+
+  // monthly GMV
+  const gmvMax = Math.max(...r.monthly.map(m => m.gmv));
+  const monthName = s => new Date(s + "T00:00:00").toLocaleString("en-US", { month: "short" });
+  document.getElementById("months").innerHTML = r.monthly.map(m =>
+    `<div class="month" title="${monthName(m.month)}: ${k(m.gmv)}"><div class="col" style="height:${m.gmv / gmvMax * 100}%"></div><span>${monthName(m.month)}</span></div>`).join("");
+  const first = r.monthly[0], last = r.monthly[r.monthly.length - 1];
+  document.getElementById("months-note").textContent =
+    `${k(first.gmv)} in Nov 2025 to ${k(last.gmv)} in Oct 2026. Session conversion rose from ${pct(first.conversion, 1)} to ${pct(last.conversion, 1)} as the share of signed-in sessions grew.`;
+
+  document.getElementById("brands").innerHTML = r.top_merchants.map(b =>
+    `<tr><td>${b.brand}</td><td class="num">${k(b.gmv)}</td><td class="num">${fmt(b.orders)}</td><td class="num">${usd(b.aov)}</td><td class="num">${pct(b.return_rate, 1)}</td></tr>`).join("");
+}
+
+fetch("outputs/results.json").then(r => r.json()).then(render).catch(() => {
+  document.querySelectorAll("#funnel-bars, #results, #forest").forEach(el =>
+    el.insertAdjacentHTML("beforebegin", '<p class="muted">Charts load from outputs/results.json. Open the page through a web server.</p>'));
+});
+</script>
+</body>
+</html>
