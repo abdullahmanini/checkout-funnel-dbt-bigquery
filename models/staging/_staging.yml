@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_events
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: session_id
+        data_tests: [not_null]
+      - name: visitor_id
+        data_tests: [not_null]
+      - name: event_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [home, department, product, cart, purchase, cancel]
+      - name: browser
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [chrome, safari, firefox, ie, other]
+      - name: traffic_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [email, adwords, facebook, youtube, organic]
+
+  - name: stg_order_items
+    columns:
+      - name: order_item_id
+        data_tests: [unique, not_null]
+      - name: sale_price
+        data_tests: [not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [complete, shipped, processing, cancelled, returned]
+
+  - name: stg_products
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]

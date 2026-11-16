@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: fct_checkout_funnel
+    description: One row per session. furthest_step is the deepest funnel step the session reached.
+    columns:
+      - name: session_id
+        data_tests: [unique, not_null]
+      - name: furthest_step
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [browse, product, cart, purchase]
+      - name: gmv
+        data_tests: [not_null]
+
+  - name: mart_experiment_visitors
+    description: One row per visitor in the simulated guest-checkout test window.
+    columns:
+      - name: visitor_id
+        data_tests: [unique, not_null]
+      - name: arm
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [control, treatment]
+      - name: revenue
+        data_tests: [not_null]
+
+  - name: mart_monthly_kpis
+    columns:
+      - name: month
+        data_tests: [unique, not_null]
+
+  - name: mart_merchant_performance
+    columns:
+      - name: brand
+        data_tests: [unique, not_null]

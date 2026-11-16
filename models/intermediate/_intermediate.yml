@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: int_session_steps
+    columns:
+      - name: session_id
+        data_tests: [unique, not_null]
+
+  - name: int_session_orders
+    columns:
+      - name: session_id
+        data_tests: [unique, not_null]
+      - name: order_item_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_order_items')
+                field: order_item_id
+      - name: match_gap_seconds
+        description: Seconds between the purchase event and the matched order line.
